@@ -1,4 +1,4 @@
-# LeMonADE
+# LeMonADE-Fork
 The abbreviation LeMonADE stands for 
 "**L**attice-based **e**xtensible **Mon**te-Carlo **A**lgorithm and **D**evelopment **E**nvironment".
 
