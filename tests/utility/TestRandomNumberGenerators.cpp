@@ -48,63 +48,36 @@ TEST(RandomNumberGeneratorsTest,R250Seeding){
 	
 	RandomNumberGenerators rng;
 	
-	rng.seedSTDRAND();
+	rng.seedAll();
 	
-	uint32_t seedArray[256];
-	for(size_t n=0;n<256;n++){
-		seedArray[n]=std::rand();
-	}
-	
-	rng.seedR250(seedArray);
-	
-	for(size_t i=0;i<10000;i++){
-		numbersDouble.push_back(rng.r250_drand());
-		numbersInt.push_back(rng.r250_rand32());
-	}
-	
-	rng.seedR250(seedArray);
-	
-	for(size_t i=0;i<10000;i++){
-		EXPECT_EQ(numbersDouble[i],rng.r250_drand());
-		EXPECT_EQ(numbersInt[i],rng.r250_rand32());
-	}
 	
 }
 
-//shows that two instances of RandomNumberGenerators draw from the same 
-//R250
+//shows that two instances of RandomNumberGenerators draw different
 
 TEST(RandomNumberGeneratorsTest,R250MultipleInstances){
 	
-	std::vector<uint32_t> numbersInt;
+	std::vector<uint32_t> numbersInt1;
+    std::vector<uint32_t> numbersInt2;
 	
 	RandomNumberGenerators rng1;
 	RandomNumberGenerators rng2;
 	
 	
-	rng1.seedSTDRAND();
-	
-	uint32_t seedArray[256];
-	for(size_t n=0;n<256;n++){
-		seedArray[n]=std::rand();
-	}
-	
-	//seed using rng1
-	rng1.seedR250(seedArray);
+	rng1.seedAll();
+	rng2.seedAll();
 	
 	//fill the array using rng1 and rng2
 	for(size_t i=0;i<5000;i++){
-		numbersInt.push_back(rng1.r250_rand32());
-		numbersInt.push_back(rng2.r250_rand32());
+		numbersInt1.push_back(rng1.r250_rand32());
+		numbersInt2.push_back(rng2.r250_rand32());
 	}
 
-	//now set back the generator, seed using rng2
-	rng2.seedR250(seedArray);
 	
 	//compare the random numbers in numbersInt with a new series drawn only
 	//from rng1...they should be equal
-	for(size_t i=0;i<10000;i++){
-		EXPECT_EQ(numbersInt[i],rng1.r250_rand32());
+	for(size_t i=0;i<5000;i++){
+		EXPECT_NE(numbersInt1[i],numbersInt2[i]);
 	}
 }
 

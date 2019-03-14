@@ -50,7 +50,7 @@ template<class IngredientsType>
 class UpdaterAbstractCreate:public AbstractUpdater
 {
 public:
-  UpdaterAbstractCreate(IngredientsType& ingredients_):ingredients(ingredients_){}
+  UpdaterAbstractCreate(IngredientsType& ingredients_):ingredients(ingredients_){rng.seedAll();}
   
   virtual void initialize();
   virtual bool execute();
