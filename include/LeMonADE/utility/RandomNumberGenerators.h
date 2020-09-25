@@ -49,11 +49,40 @@ public:
         int threads = std::max(1, omp_get_max_threads());
         for(int id = 0; id < threads; ++id)
         {
+            //engines[id].seed(std::chrono::system_clock::now().time_since_epoch().count());
+            #pragma omp critical
+            {            
+                std::random_device _rd;
+                engines[id].seed(_rd());
+            }   
+        }
+        
+        /*int threads = std::max(1, omp_get_max_threads());
+        for(int id = 0; id < threads; ++id)
+        {
             engines[id].seed(std::chrono::system_clock::now().time_since_epoch().count());
             
         }
+        */
        
     }
+    
+    void seed()
+    {
+        #pragma omp critical
+        {
+                int id = omp_get_thread_num();
+                std::random_device _rd;
+                engines[id].seed(_rd());
+        }
+    }
+    
+    void seed(int _seed)
+    {
+        int id = omp_get_thread_num();
+        engines[id].seed(_seed);
+    }
+
 };
 
 #endif
