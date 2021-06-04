@@ -103,7 +103,7 @@ TEST_F(TestMoveReactiveBreak, checkAll)
   move.init(ingredients);
   EXPECT_EQ(0, move.getIndex());
   EXPECT_EQ(1, move.getPartner());
-  EXPECT_TRUE( move.check(ingredients));
+  EXPECT_FALSE( move.check(ingredients));
   
   move.init(ingredients,2);
   EXPECT_EQ(2, move.getIndex());
@@ -113,7 +113,7 @@ TEST_F(TestMoveReactiveBreak, checkAll)
   move.init(ingredients,1);
   EXPECT_EQ(1, move.getIndex());
   EXPECT_EQ(0, move.getPartner());
-  EXPECT_TRUE( move.check(ingredients));
+  EXPECT_FALSE( move.check(ingredients));
   
   move.init(ingredients,2,1);
   EXPECT_EQ(2, move.getIndex());
@@ -123,10 +123,60 @@ TEST_F(TestMoveReactiveBreak, checkAll)
   move.init(ingredients,0,1);
   EXPECT_EQ(0, move.getIndex());
   EXPECT_EQ(1, move.getPartner());
-  EXPECT_TRUE( move.check(ingredients));
+  EXPECT_FALSE( move.check(ingredients));
   move.apply(ingredients);
   
   EXPECT_FALSE(ingredients.getMolecules().areConnected(0,1));
 
+  // check for connection across periodic boundary conditions
+  ingredients.modifyMolecules().addMonomer(-3     ,1,1); // id 3 -> 3,0,0
+  ingredients.modifyMolecules().addMonomer(0      ,1,1); // id 4 -> 2,1,1
+  ingredients.modifyMolecules().addMonomer(2      ,3,2); // id 5 -> 3,1,0
+  ingredients.modifyMolecules().addMonomer(5      ,4,2); // id 6 -> 2,0,0
+  ingredients.modifyMolecules().addMonomer(7      ,4,2); // id 7 -> 2,1,0
+  ingredients.modifyMolecules().addMonomer(9      ,5,2); // id 8 -> 2,1,1
+  ingredients.modifyMolecules().addMonomer(11     ,6,3); // id 9
+  
+  
+  ingredients.modifyMolecules()[3].setReactive(true);
+  ingredients.modifyMolecules()[4].setReactive(true);
+  ingredients.modifyMolecules()[5].setReactive(true);
+  ingredients.modifyMolecules()[6].setReactive(true);
+  ingredients.modifyMolecules()[7].setReactive(true);
+  ingredients.modifyMolecules()[8].setReactive(true);
+  ingredients.modifyMolecules()[9].setReactive(true);
+  
+  ingredients.modifyMolecules()[3].setNumMaxLinks(1);
+  ingredients.modifyMolecules()[4].setNumMaxLinks(2);
+  ingredients.modifyMolecules()[5].setNumMaxLinks(2);
+  ingredients.modifyMolecules()[6].setNumMaxLinks(2);
+  ingredients.modifyMolecules()[7].setNumMaxLinks(2);
+  ingredients.modifyMolecules()[8].setNumMaxLinks(2);
+  ingredients.modifyMolecules()[9].setNumMaxLinks(1);
+  
+  ingredients.modifyMolecules().connect(3,4);
+  ingredients.modifyMolecules().connect(4,5);
+  ingredients.modifyMolecules().connect(5,6);
+  ingredients.modifyMolecules().connect(6,7);
+  ingredients.modifyMolecules().connect(7,8);
+  ingredients.modifyMolecules().connect(8,9);
+  
+  EXPECT_NO_THROW(ingredients.synchronize());
+  EXPECT_EQ(10,ingredients.getMolecules().size());
+  EXPECT_TRUE(ingredients.getMolecules().areConnected(3,4));
+  EXPECT_TRUE(ingredients.getMolecules().areConnected(4,5));
+  EXPECT_TRUE(ingredients.getMolecules().areConnected(5,6));
+  EXPECT_TRUE(ingredients.getMolecules().areConnected(6,7));
+  EXPECT_TRUE(ingredients.getMolecules().areConnected(7,8));
+  EXPECT_TRUE(ingredients.getMolecules().areConnected(8,9));
  
+  move.init(ingredients);
+  EXPECT_TRUE((move.getIndex() >= 3) && (move.getIndex() <= 9)); // 0 and 1 are gone
+  EXPECT_TRUE((move.getPartner() >= 3) && (move.getPartner() <= 9)); // 0 and 1 are gone
+  
+  // bonds between (3,4), (4,5) are allowed to break
+  // bonds between (5,6), (6,7), (7,8), (8,9) are not allowed to break
+  // bond with getIndex()==5 is indifferent
+  EXPECT_TRUE((move.getIndex() <= 4) ? move.check(ingredients) : (move.getIndex() >= 6) ? !move.check(ingredients) : true );
+  
 }

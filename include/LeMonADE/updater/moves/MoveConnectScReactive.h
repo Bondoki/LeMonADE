@@ -138,7 +138,7 @@ private:
   const size_t shellPositionsEntries = 54;
   
   //! number of randomly choosen direction out of the shell
-  const size_t numRandomSelectedDirections = 1;
+  const size_t numRandomSelectedDirections = 8;
   
   //! contains the id of the reactive partner in the randomly selected shell direction
   std::map<uint32_t, VectorInt3> IdReactivePartnerInShell;

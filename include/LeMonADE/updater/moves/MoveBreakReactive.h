@@ -3,7 +3,7 @@
   o\.|./o    e   xtensible     | LeMonADE: An Open Source Implementation of the
  o\.\|/./o   Mon te-Carlo      |           Bond-Fluctuation-Model for Polymers
 oo---0---oo  A   lgorithm and  |
- o/./|\.\o   D   evelopment    | Copyright (C) 2013-2015 by
+ o/./|\.\o   D   evelopment    | Copyright (C) 2013-2015,2021 by
   o/.|.\o    E   nvironment    | LeMonADE Principal Developers (see AUTHORS)
     ooo                        |
 ----------------------------------------------------------------------------------
@@ -25,11 +25,11 @@ along with LeMonADE.  If not, see <http://www.gnu.org/licenses/>.
 
 --------------------------------------------------------------------------------*/
 
-#ifndef LEMONADE_UPDATER_MOVES_MOVEBREAKREACTIVE_H
-#define LEMONADE_UPDATER_MOVES_MOVEBREAKREACTIVE_H
+#pragma once
 #include <limits>
 #include <vector>
-#include "./MoveBreakBase.h"
+#include <LeMonADE/updater/moves/MoveBreakBase.h>
+#include <LeMonADE/utility/DistanceCalculation.h>
 
 /*****************************************************************************/
 /**
@@ -166,7 +166,19 @@ void MoveBreakReactive::init(const IngredientsType& ing, uint32_t index, uint32_
 template <class IngredientsType>
 bool MoveBreakReactive::check(IngredientsType& ing)
 {
+    // check for valid id
   if (std::numeric_limits<uint32_t>::max() == this->getPartner() ) return false ; 
+  
+  // check if bond vector is out of P(2,2,1); P(3,0,0); P(3,1,0)
+  //auto bv = ing.getMolecules()[this->getIndex()].getVector3D()-ing.getMolecules()[this->getPartner()].getVector3D();
+  
+  // fold the vector to if neccessary
+  VectorInt3 bv = LemonadeDistCalcs::MinImageVector(ing.getMolecules()[this->getIndex()].getVector3D(), ing.getMolecules()[this->getPartner()].getVector3D(), ing);
+  
+  // reject short bond vectors P(2,0,0); P(2,1,0); P(2,1,1)
+  if(bv*bv < 9)
+      return false;
+  
   //send the move to the Features to be checked
   return ing.checkMove(ing,*this);
 }
@@ -190,4 +202,3 @@ void MoveBreakReactive::apply(IngredientsType& ing)
   	ing.applyMove(ing,*this);
 }
 
-#endif
