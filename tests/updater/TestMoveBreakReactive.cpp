@@ -39,7 +39,7 @@ along with LeMonADE.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <LeMonADE/core/Molecules.h>
 #include <LeMonADE/core/Ingredients.h>
-#include <LeMonADE/feature/FeatureMoleculesIO.h>
+#include <LeMonADE/feature/FeatureMoleculesIOUnsaveCheck.h>
 #include <LeMonADE/feature/FeatureExcludedVolumeSc.h>
 #include <LeMonADE/feature/FeatureConnectionSc.h>
 #include <LeMonADE/feature/FeatureReactiveBonds.h>
@@ -50,7 +50,7 @@ along with LeMonADE.  If not, see <http://www.gnu.org/licenses/>.
 
 class TestMoveReactiveBreak: public ::testing::Test{
 public:
-  typedef LOKI_TYPELIST_3( FeatureMoleculesIO,FeatureReactiveBonds, FeatureExcludedVolumeSc<>) Features;
+  typedef LOKI_TYPELIST_3( FeatureMoleculesIOUnsaveCheck,FeatureReactiveBonds, FeatureExcludedVolumeSc<>) Features;
   typedef ConfigureSystem<VectorInt3,Features,3> Config;
   typedef Ingredients<Config> IngredientsType;
 
@@ -75,9 +75,9 @@ private:
 
 TEST_F(TestMoveReactiveBreak, checkAll)
 {
-  ingredients.setBoxX(16);
-  ingredients.setBoxY(16);
-  ingredients.setBoxZ(16);
+  ingredients.setBoxX(32);
+  ingredients.setBoxY(32);
+  ingredients.setBoxZ(32);
   ingredients.setPeriodicX(true);
   ingredients.setPeriodicY(true);
   ingredients.setPeriodicZ(true);
@@ -179,4 +179,286 @@ TEST_F(TestMoveReactiveBreak, checkAll)
   // bond with getIndex()==5 is indifferent
   EXPECT_TRUE((move.getIndex() <= 4) ? move.check(ingredients) : (move.getIndex() >= 6) ? !move.check(ingredients) : true );
   
+  EXPECT_NO_THROW(ingredients.synchronize());
+  // check periodic image
+  ingredients.modifyMolecules().addMonomer(-2-ingredients.getBoxX()*2,8,12); // id 10 -> -2,0,0
+  ingredients.modifyMolecules().addMonomer(0      ,8,12); // id 11 
+  
+  ingredients.modifyMolecules()[10].setReactive(true);
+  ingredients.modifyMolecules()[11].setReactive(true);
+  
+  ingredients.modifyMolecules()[10].setNumMaxLinks(1);
+  ingredients.modifyMolecules()[11].setNumMaxLinks(1);
+  
+  ingredients.modifyMolecules().connect(10,11);
+  
+  EXPECT_NO_THROW(ingredients.synchronize());
+  EXPECT_EQ(12,ingredients.getMolecules().size());
+  EXPECT_TRUE(ingredients.getMolecules().areConnected(10,11));
+  
+  move.init(ingredients,10);
+  EXPECT_EQ(10, move.getIndex());
+  EXPECT_EQ(11, move.getPartner());
+  EXPECT_FALSE( move.check(ingredients));
+  
+  move.init(ingredients,11);
+  EXPECT_EQ(11, move.getIndex());
+  EXPECT_EQ(10, move.getPartner());
+  EXPECT_FALSE( move.check(ingredients));
+  
+  ingredients.modifyMolecules()[10].setX(-3-ingredients.getBoxX()*2); // bond 10-11 -> -3,0,0
+  EXPECT_NO_THROW(ingredients.synchronize());
+  
+  move.init(ingredients,10);
+  EXPECT_EQ(10, move.getIndex());
+  EXPECT_EQ(11, move.getPartner());
+  EXPECT_TRUE( move.check(ingredients));
+  
+  move.init(ingredients,11);
+  EXPECT_EQ(11, move.getIndex());
+  EXPECT_EQ(10, move.getPartner());
+  EXPECT_TRUE( move.check(ingredients));
+  
+  // id 10: (-3     ,8,12)
+  // id 11: (0      ,8,12)
+  ingredients.modifyMolecules()[10].setX(-3-ingredients.getBoxX()*2);  // bond 10-11 -> -3,0,0
+  ingredients.modifyMolecules()[10].setY(8 +ingredients.getBoxY()*56); // bond 10-11 -> -3,0,0
+  ingredients.modifyMolecules()[10].setZ(12-ingredients.getBoxZ()*63); // bond 10-11 -> -3,0,0
+  
+  ingredients.modifyMolecules()[11].setX(0 +ingredients.getBoxX()*74);  // bond 10-11 -> -3,0,0
+  ingredients.modifyMolecules()[11].setY(8 -ingredients.getBoxY()*23); // bond 10-11 -> -3,0,0
+  ingredients.modifyMolecules()[11].setZ(12+ingredients.getBoxZ()*33); // bond 10-11 -> -3,0,0
+  
+  EXPECT_NO_THROW(ingredients.synchronize());
+  
+  move.init(ingredients,10);
+  EXPECT_EQ(10, move.getIndex());
+  EXPECT_EQ(11, move.getPartner());
+  EXPECT_TRUE( move.check(ingredients));
+  
+  move.init(ingredients,11);
+  EXPECT_EQ(11, move.getIndex());
+  EXPECT_EQ(10, move.getPartner());
+  EXPECT_TRUE( move.check(ingredients));
+  
+  // id 10: (-3     ,8,12)
+  // id 11: (0      ,8,13)
+  ingredients.modifyMolecules()[10].setX(-3+ingredients.getBoxX()*2);  // bond 10-11 -> -3,0,-1
+  ingredients.modifyMolecules()[10].setY(8 -ingredients.getBoxY()*56); // bond 10-11 -> -3,0,-1
+  ingredients.modifyMolecules()[10].setZ(12+ingredients.getBoxZ()*63); // bond 10-11 -> -3,0,-1
+  
+  ingredients.modifyMolecules()[11].setX(0 -ingredients.getBoxX()*74);  // bond 10-11 -> -3,0,-1
+  ingredients.modifyMolecules()[11].setY(8 +ingredients.getBoxY()*23); // bond 10-11 -> -3,0,-1
+  ingredients.modifyMolecules()[11].setZ(13-ingredients.getBoxZ()*33); // bond 10-11 -> -3,0,-1
+  
+  EXPECT_NO_THROW(ingredients.synchronize());
+  
+  move.init(ingredients,10);
+  EXPECT_EQ(10, move.getIndex());
+  EXPECT_EQ(11, move.getPartner());
+  EXPECT_TRUE( move.check(ingredients));
+  
+  move.init(ingredients,11);
+  EXPECT_EQ(11, move.getIndex());
+  EXPECT_EQ(10, move.getPartner());
+  EXPECT_TRUE( move.check(ingredients));
+  
+ 
+  ingredients.modifyMolecules()[10].setX(-3 +ingredients.getBoxX()*2);  // bond 10-11 -> -3,1,0
+  ingredients.modifyMolecules()[10].setY(23 -ingredients.getBoxY()*56); // bond 10-11 -> -3,1,0
+  ingredients.modifyMolecules()[10].setZ(18 +ingredients.getBoxZ()*63); // bond 10-11 -> -3,1,0
+  
+  ingredients.modifyMolecules()[11].setX(0  -ingredients.getBoxX()*74);  // bond 10-11 -> -3,1,0
+  ingredients.modifyMolecules()[11].setY(24 +ingredients.getBoxY()*23);  // bond 10-11 -> -3,1,0
+  ingredients.modifyMolecules()[11].setZ(18 -ingredients.getBoxZ()*33);  // bond 10-11 -> -3,1,0
+  
+  EXPECT_NO_THROW(ingredients.synchronize());
+  
+  move.init(ingredients,10);
+  EXPECT_EQ(10, move.getIndex());
+  EXPECT_EQ(11, move.getPartner());
+  EXPECT_TRUE( move.check(ingredients));
+  
+  move.init(ingredients,11);
+  EXPECT_EQ(11, move.getIndex());
+  EXPECT_EQ(10, move.getPartner());
+  EXPECT_TRUE( move.check(ingredients));
+  
+  // id 10: (-2     ,8,24)
+  // id 11: (0      ,10,23)
+  ingredients.modifyMolecules()[10].setX(-2-ingredients.getBoxX()*2);  // bond 10-11 -> -2,2,-1
+  ingredients.modifyMolecules()[10].setY(8 +ingredients.getBoxY()*56); // bond 10-11 -> -2,2,-1
+  ingredients.modifyMolecules()[10].setZ(24-ingredients.getBoxZ()*63); // bond 10-11 -> -2,2,-1
+  
+  ingredients.modifyMolecules()[11].setX(0 +ingredients.getBoxX()*74);  // bond 10-11 -> -2,2,-1
+  ingredients.modifyMolecules()[11].setY(10 -ingredients.getBoxY()*23); // bond 10-11 -> -2,2,-1
+  ingredients.modifyMolecules()[11].setZ(23+ingredients.getBoxZ()*33); // bond 10-11 -> -2,2,-1
+  
+  EXPECT_NO_THROW(ingredients.synchronize());
+  
+  move.init(ingredients,10);
+  EXPECT_EQ(10, move.getIndex());
+  EXPECT_EQ(11, move.getPartner());
+  EXPECT_TRUE( move.check(ingredients));
+  
+  move.init(ingredients,11);
+  EXPECT_EQ(11, move.getIndex());
+  EXPECT_EQ(10, move.getPartner());
+  EXPECT_TRUE( move.check(ingredients));
+  
+  // id 10: (-2     ,7,12)
+  // id 11: (0      ,8,13)
+  ingredients.modifyMolecules()[10].setX(-2+ingredients.getBoxX()*2);  // bond 10-11 -> -2,1,-1
+  ingredients.modifyMolecules()[10].setY(7 -ingredients.getBoxY()*56); // bond 10-11 -> -2,1,-1
+  ingredients.modifyMolecules()[10].setZ(12+ingredients.getBoxZ()*63); // bond 10-11 -> -2,1,-1
+  
+  ingredients.modifyMolecules()[11].setX(0 -ingredients.getBoxX()*74);  // bond 10-11 -> -2,1,-1
+  ingredients.modifyMolecules()[11].setY(8 +ingredients.getBoxY()*23);  // bond 10-11 -> -2,1,-1
+  ingredients.modifyMolecules()[11].setZ(13-ingredients.getBoxZ()*33);  // bond 10-11 -> -2,1,-1
+  
+  EXPECT_NO_THROW(ingredients.synchronize());
+  
+  move.init(ingredients,10);
+  EXPECT_EQ(10, move.getIndex());
+  EXPECT_EQ(11, move.getPartner());
+  EXPECT_FALSE( move.check(ingredients));
+  
+  move.init(ingredients,11);
+  EXPECT_EQ(11, move.getIndex());
+  EXPECT_EQ(10, move.getPartner());
+  EXPECT_FALSE( move.check(ingredients));
+  
+  // id 10: (-2     ,7,13)
+  // id 11: (0      ,8,13)
+  ingredients.modifyMolecules()[10].setX(-2+ingredients.getBoxX()*2);  // bond 10-11 -> -2,1,0
+  ingredients.modifyMolecules()[10].setY(7 -ingredients.getBoxY()*56); // bond 10-11 -> -2,1,0
+  ingredients.modifyMolecules()[10].setZ(13+ingredients.getBoxZ()*63); // bond 10-11 -> -2,1,0
+  
+  ingredients.modifyMolecules()[11].setX(0 -ingredients.getBoxX()*74);  // bond 10-11 -> -2,1,0
+  ingredients.modifyMolecules()[11].setY(8 +ingredients.getBoxY()*23);  // bond 10-11 -> -2,1,0
+  ingredients.modifyMolecules()[11].setZ(13-ingredients.getBoxZ()*33);  // bond 10-11 -> -2,1,0
+  
+  EXPECT_NO_THROW(ingredients.synchronize());
+  
+  move.init(ingredients,10);
+  EXPECT_EQ(10, move.getIndex());
+  EXPECT_EQ(11, move.getPartner());
+  EXPECT_FALSE( move.check(ingredients));
+  
+  move.init(ingredients,11);
+  EXPECT_EQ(11, move.getIndex());
+  EXPECT_EQ(10, move.getPartner());
+  EXPECT_FALSE( move.check(ingredients));
+  
+  // id 10: (-2     ,8,13)
+  // id 11: (0      ,8,13)
+  ingredients.modifyMolecules()[10].setX(-2+ingredients.getBoxX()*2);  // bond 10-11 -> -2,0,0
+  ingredients.modifyMolecules()[10].setY(8 -ingredients.getBoxY()*56); // bond 10-11 -> -2,0,0
+  ingredients.modifyMolecules()[10].setZ(13+ingredients.getBoxZ()*63); // bond 10-11 -> -2,0,0
+  
+  ingredients.modifyMolecules()[11].setX(0 -ingredients.getBoxX()*74);  // bond 10-11 -> -2,0,0
+  ingredients.modifyMolecules()[11].setY(8 +ingredients.getBoxY()*23);  // bond 10-11 -> -2,0,0
+  ingredients.modifyMolecules()[11].setZ(13-ingredients.getBoxZ()*33);  // bond 10-11 -> -2,0,0
+  
+  EXPECT_NO_THROW(ingredients.synchronize());
+  
+  move.init(ingredients,10);
+  EXPECT_EQ(10, move.getIndex());
+  EXPECT_EQ(11, move.getPartner());
+  EXPECT_FALSE( move.check(ingredients));
+  
+  move.init(ingredients,11);
+  EXPECT_EQ(11, move.getIndex());
+  EXPECT_EQ(10, move.getPartner());
+  EXPECT_FALSE( move.check(ingredients));
+  
+  
+  // id 10: (2     ,8,12)
+  // id 11: (31      ,8,12)
+  ingredients.modifyMolecules()[10].setX(2+ingredients.getBoxX()*2);  // bond 10-11 -> 3,0,0
+  ingredients.modifyMolecules()[10].setY(8 +ingredients.getBoxY()*56); // bond 10-11 -> 3,0,0
+  ingredients.modifyMolecules()[10].setZ(12-ingredients.getBoxZ()*63); // bond 10-11 -> 3,0,0
+  
+  ingredients.modifyMolecules()[11].setX(31 -ingredients.getBoxX()*74);  // bond 10-11 -> 3,0,0
+  ingredients.modifyMolecules()[11].setY(8 -ingredients.getBoxY()*23); // bond 10-11 -> 3,0,0
+  ingredients.modifyMolecules()[11].setZ(12+ingredients.getBoxZ()*33); // bond 10-11 -> 3,0,0
+  
+  EXPECT_NO_THROW(ingredients.synchronize());
+  
+  move.init(ingredients,10);
+  EXPECT_EQ(10, move.getIndex());
+  EXPECT_EQ(11, move.getPartner());
+  EXPECT_TRUE( move.check(ingredients));
+  
+  move.init(ingredients,11);
+  EXPECT_EQ(11, move.getIndex());
+  EXPECT_EQ(10, move.getPartner());
+  EXPECT_TRUE( move.check(ingredients));
+  
+  // id 10: (2     ,23,13)
+  // id 11: (31    ,23,12)
+  ingredients.modifyMolecules()[10].setX(2 +ingredients.getBoxX()*2);  // bond 10-11 -> 3,0,1
+  ingredients.modifyMolecules()[10].setY(23 -ingredients.getBoxY()*56); // bond 10-11 -> 3,0,1
+  ingredients.modifyMolecules()[10].setZ(13 +ingredients.getBoxZ()*63); // bond 10-11 -> 3,0,1
+  
+  ingredients.modifyMolecules()[11].setX(31  -ingredients.getBoxX()*74);  // bond 10-11 -> 3,0,1
+  ingredients.modifyMolecules()[11].setY(23 +ingredients.getBoxY()*23);  // bond 10-11 -> 3,0,1
+  ingredients.modifyMolecules()[11].setZ(12 -ingredients.getBoxZ()*33);  // bond 10-11 -> 3,0,1
+  
+  EXPECT_NO_THROW(ingredients.synchronize());
+  
+  move.init(ingredients,10);
+  EXPECT_EQ(10, move.getIndex());
+  EXPECT_EQ(11, move.getPartner());
+  EXPECT_TRUE( move.check(ingredients));
+  
+  move.init(ingredients,11);
+  EXPECT_EQ(11, move.getIndex());
+  EXPECT_EQ(10, move.getPartner());
+  EXPECT_TRUE( move.check(ingredients));
+  
+  // id 10: (-2     ,8,24)
+  // id 11: (0      ,10,23)
+  ingredients.modifyMolecules()[10].setX(2-ingredients.getBoxX()*2);  // bond 10-11 -> 2,2,-1
+  ingredients.modifyMolecules()[10].setY(8 +ingredients.getBoxY()*56); // bond 10-11 -> 2,2,-1
+  ingredients.modifyMolecules()[10].setZ(24-ingredients.getBoxZ()*63); // bond 10-11 -> 2,2,-1
+  
+  ingredients.modifyMolecules()[11].setX(0 +ingredients.getBoxX()*74);  // bond 10-11 -> 2,2,-1
+  ingredients.modifyMolecules()[11].setY(10 -ingredients.getBoxY()*23); // bond 10-11 -> 2,2,-1
+  ingredients.modifyMolecules()[11].setZ(23+ingredients.getBoxZ()*33); // bond 10-11 -> 2,2,-1
+  
+  EXPECT_NO_THROW(ingredients.synchronize());
+  
+  move.init(ingredients,10);
+  EXPECT_EQ(10, move.getIndex());
+  EXPECT_EQ(11, move.getPartner());
+  EXPECT_TRUE( move.check(ingredients));
+  
+  move.init(ingredients,11);
+  EXPECT_EQ(11, move.getIndex());
+  EXPECT_EQ(10, move.getPartner());
+  EXPECT_TRUE( move.check(ingredients));
+  
+  
+  // id 10: (2     ,8,13)
+  // id 11: (0      ,8,13)
+  ingredients.modifyMolecules()[10].setX(2+ingredients.getBoxX()*2);  // bond 10-11 -> 2,0,0
+  ingredients.modifyMolecules()[10].setY(8 -ingredients.getBoxY()*56); // bond 10-11 -> 2,0,0
+  ingredients.modifyMolecules()[10].setZ(13+ingredients.getBoxZ()*63); // bond 10-11 -> 2,0,0
+  
+  ingredients.modifyMolecules()[11].setX(0 -ingredients.getBoxX()*74);  // bond 10-11 -> 2,0,0
+  ingredients.modifyMolecules()[11].setY(8 +ingredients.getBoxY()*23);  // bond 10-11 -> 2,0,0
+  ingredients.modifyMolecules()[11].setZ(13-ingredients.getBoxZ()*33);  // bond 10-11 -> 2,0,0
+  
+  EXPECT_NO_THROW(ingredients.synchronize());
+  
+  move.init(ingredients,10);
+  EXPECT_EQ(10, move.getIndex());
+  EXPECT_EQ(11, move.getPartner());
+  EXPECT_FALSE( move.check(ingredients));
+  
+  move.init(ingredients,11);
+  EXPECT_EQ(11, move.getIndex());
+  EXPECT_EQ(10, move.getPartner());
+  EXPECT_FALSE( move.check(ingredients));
 }
