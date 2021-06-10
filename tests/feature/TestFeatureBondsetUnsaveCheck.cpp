@@ -119,9 +119,9 @@ TEST_F(FeatureBondsetTestUnsaveCheck,checkLocalScBfmMove)
 	ingredients.setPeriodicX(true);
 	ingredients.setPeriodicY(true);
 	ingredients.setPeriodicZ(true);
-	ingredients.setBoxX(10);
-	ingredients.setBoxY(10);
-	ingredients.setBoxZ(10);
+	ingredients.setBoxX(16);
+	ingredients.setBoxY(16);
+	ingredients.setBoxZ(16);
 
 	ingredients.modifyMolecules().resize(2);
 	ingredients.modifyMolecules()[0].setAllCoordinates(0,0,0);
@@ -131,7 +131,7 @@ TEST_F(FeatureBondsetTestUnsaveCheck,checkLocalScBfmMove)
 	ingredients.modifyBondset().addBond(2,0,0,17);
 	ingredients.modifyBondset().addBond(-2,0,0,20);
 
-	ingredients.synchronize(ingredients);
+	EXPECT_NO_THROW(ingredients.synchronize(ingredients));
 
 	MoveLocalSc move;
 	move.init(ingredients);
@@ -195,6 +195,19 @@ TEST_F(FeatureBondsetTestUnsaveCheck,checkLocalScBfmMove)
 		}
 		EXPECT_TRUE(move.check(ingredients));
 	}
+	
+	ingredients.setBoxX(10);
+    EXPECT_THROW(ingredients.synchronize(ingredients), std::runtime_error);
+    
+    ingredients.setBoxX(16);
+    ingredients.setBoxY(10);
+    EXPECT_THROW(ingredients.synchronize(ingredients), std::runtime_error);
+	
+    ingredients.setBoxX(16);
+    ingredients.setBoxY(16);
+	ingredients.setBoxZ(10);
+    EXPECT_THROW(ingredients.synchronize(ingredients), std::runtime_error);
+	
 }
 
 /***********************************************************************/

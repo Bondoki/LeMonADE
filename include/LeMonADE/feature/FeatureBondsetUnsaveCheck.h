@@ -42,6 +42,7 @@ along with LeMonADE.  If not, see <http://www.gnu.org/licenses/>.
 #include <LeMonADE/updater/moves/MoveBase.h>
 #include <LeMonADE/updater/moves/MoveLocalBase.h>
 #include <LeMonADE/updater/moves/MoveConnectBase.h>
+#include <LeMonADE/utility/DistanceCalculation.h>
 
 /*****************************************************************/
 /**
@@ -83,7 +84,12 @@ class FeatureBondsetUnsaveCheck : public FeatureBondset<BondSetType>
           const typename IngredientsType::molecules_type& molecules=ingredients.getMolecules();
 
           for (size_t j=0; j< molecules.getNumLinks(monoIndex); ++j){
+              // only valid for 2^n lattice size
               if (!bondset.isValid(molecules[molecules.getNeighborIdx(monoIndex,j)].getVector3D()-(molecules[monoIndex].getVector3D()+move.getDir()))) return false;
+              
+              // valid for all even/odd lattice size
+              //if(!bondset.isValid(LemonadeDistCalcs::MinImageVector(molecules[monoIndex].getVector3D()+move.getDir(), molecules[molecules.getNeighborIdx(monoIndex,j)].getVector3D(), ingredients))) return false;
+              
           }
 
           return true;
@@ -108,7 +114,11 @@ class FeatureBondsetUnsaveCheck : public FeatureBondset<BondSetType>
 	  uint32_t partnerID=move.getPartner();
           const typename IngredientsType::molecules_type& molecules=ingredients.getMolecules();
 
+      // only valid for 2^n lattice size
 	  if (!bondset.isValid(molecules[partnerID]-molecules[MonID])) return false;
+      
+      // valid for all even/odd lattice size
+      //if(!bondset.isValid(LemonadeDistCalcs::MinImageVector(molecules[MonID], molecules[partnerID], ingredients))) return false;
 
           return true;
   }
@@ -123,6 +133,21 @@ class FeatureBondsetUnsaveCheck : public FeatureBondset<BondSetType>
    */
   template<class IngredientsType> void synchronize(IngredientsType& ingredients)
   {
+    std::cout << "FeatureBondsetUnsaveCheck::synchronize() ..." ;
+    // check if lattice is power of two
+    int32_t X = ingredients.getBoxX();
+    int32_t Y = ingredients.getBoxY();
+    int32_t Z = ingredients.getBoxZ();
+    
+    if(!(X>0 && ((X & (X-1)) == 0)) || !(Y>0 && ((Y & (Y-1)) == 0)) || !(Z>0 && ((Z & (Z-1)) == 0)))
+    {
+      std::ostringstream errorMessage;
+	  errorMessage //<<  "FeatureBondsetUnsaveCheck::synchronize(): \n" 
+	  << "This feature allows only 2^n lattice. \n"
+	  << "A workaround can be find in FeatureBondsetUnsaveCheck.\n";
+	  throw std::runtime_error(errorMessage.str());
+    }
+    
     //this function only does something if the bondset has change since the last update
     bondset.updateLookupTable();
     
@@ -130,22 +155,26 @@ class FeatureBondsetUnsaveCheck : public FeatureBondset<BondSetType>
     
     for (size_t i=0; i< molecules.size(); ++i)
     {
-     for (size_t j=0; j< molecules.getNumLinks(i); ++j){
-       
-	 uint n = molecules.getNeighborIdx(i,j);
-	 if (!bondset.isValid(molecules[n]-molecules[i]))
-	{
-	  std::ostringstream errorMessage;
-	  errorMessage << "FeatureBondsetUnsaveCheck::synchronize(): Invalid bond vector between monomer " 
-	  << i << " at " << molecules[i].getVector3D() 
-	  << " and " 
-	  << n << " at " << molecules[n].getVector3D() 
-	  <<  ".\n";
-	  throw std::runtime_error(errorMessage.str());
-	}
-
+      for (size_t j=0; j< molecules.getNumLinks(i); ++j){
+        
+        uint n = molecules.getNeighborIdx(i,j);
+        //if (!bondset.isValid(molecules[n]-molecules[i])) //only valid for 2^n lattice size
+          if(!bondset.isValid(LemonadeDistCalcs::MinImageVector(molecules[n], molecules[i], ingredients))) //valid for all even/odd lattice size
+          {
+            std::ostringstream errorMessage;
+            errorMessage //<< "FeatureBondsetUnsaveCheck::synchronize():"
+            << "Invalid bond vector between monomer " 
+            << i << " at " << molecules[i].getVector3D() 
+            << " and " 
+            << n << " at " << molecules[n].getVector3D() 
+            <<  ".\n";
+            throw std::runtime_error(errorMessage.str());
+          }
+          
+      }
     }
-    }
+    
+     std::cout << "done" << std::endl;
   }
 
  private:

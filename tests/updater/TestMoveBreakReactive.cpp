@@ -75,9 +75,9 @@ private:
 
 TEST_F(TestMoveReactiveBreak, checkAll)
 {
-  ingredients.setBoxX(32);
-  ingredients.setBoxY(32);
-  ingredients.setBoxZ(32);
+  ingredients.setBoxX(64);
+  ingredients.setBoxY(64);
+  ingredients.setBoxZ(64);
   ingredients.setPeriodicX(true);
   ingredients.setPeriodicY(true);
   ingredients.setPeriodicZ(true);
@@ -93,6 +93,8 @@ TEST_F(TestMoveReactiveBreak, checkAll)
   ingredients.modifyMolecules()[2].setNumMaxLinks(2);
   ingredients.modifyMolecules().connect(0,1);
   ingredients.modifyMolecules().connect(1,2);
+  
+  
   EXPECT_NO_THROW(ingredients.synchronize());
   EXPECT_EQ(3,ingredients.getMolecules().size());
   EXPECT_TRUE(ingredients.getMolecules().areConnected(0,1));
@@ -127,6 +129,10 @@ TEST_F(TestMoveReactiveBreak, checkAll)
   move.apply(ingredients);
   
   EXPECT_FALSE(ingredients.getMolecules().areConnected(0,1));
+  
+  EXPECT_NO_THROW(ingredients.synchronize());
+  
+  std::cout << "Adding new monomers id3-id9" << std::endl;
 
   // check for connection across periodic boundary conditions
   ingredients.modifyMolecules().addMonomer(-3     ,1,1); // id 3 -> 3,0,0
@@ -161,6 +167,7 @@ TEST_F(TestMoveReactiveBreak, checkAll)
   ingredients.modifyMolecules().connect(7,8);
   ingredients.modifyMolecules().connect(8,9);
   
+  
   EXPECT_NO_THROW(ingredients.synchronize());
   EXPECT_EQ(10,ingredients.getMolecules().size());
   EXPECT_TRUE(ingredients.getMolecules().areConnected(3,4));
@@ -189,12 +196,30 @@ TEST_F(TestMoveReactiveBreak, checkAll)
   
   ingredients.modifyMolecules()[10].setNumMaxLinks(1);
   ingredients.modifyMolecules()[11].setNumMaxLinks(1);
-  
   ingredients.modifyMolecules().connect(10,11);
   
+  for(int x=64; x < 512; x*=2)
+    for(int y=64; y < 512; y*=2)
+      for(int z=64; z < 512; z*=2)
+      {
+        ingredients.setBoxX(x);
+        ingredients.setBoxY(y);
+        ingredients.setBoxZ(z);
+
   EXPECT_NO_THROW(ingredients.synchronize());
   EXPECT_EQ(12,ingredients.getMolecules().size());
   EXPECT_TRUE(ingredients.getMolecules().areConnected(10,11));
+  
+  // id 10: (-2-ingredients.getBoxX()*2,8,12)
+  // id 11: (0      ,8,12)
+  ingredients.modifyMolecules()[10].setX(-2-ingredients.getBoxX()*2);  // bond 10-11 -> -2,0,0
+  ingredients.modifyMolecules()[10].setY(8 ); // bond 10-11 -> -2,0,0
+  ingredients.modifyMolecules()[10].setZ(12); // bond 10-11 -> -2,0,0
+  
+  ingredients.modifyMolecules()[11].setX(0 );  // bond 10-11 -> -2,0,0
+  ingredients.modifyMolecules()[11].setY(8 ); // bond 10-11 -> -2,0,0
+  ingredients.modifyMolecules()[11].setZ(12); // bond 10-11 -> -2,0,0
+  
   
   move.init(ingredients,10);
   EXPECT_EQ(10, move.getIndex());
@@ -461,4 +486,5 @@ TEST_F(TestMoveReactiveBreak, checkAll)
   EXPECT_EQ(11, move.getIndex());
   EXPECT_EQ(10, move.getPartner());
   EXPECT_FALSE( move.check(ingredients));
+      }
 }
